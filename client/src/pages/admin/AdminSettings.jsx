@@ -1,11 +1,13 @@
 import { useEffect, useState } from 'react';
 import api from '../../api';
+import ImageUploadField from '../../components/ImageUploadField.jsx';
 import { useAuth } from '../../context/AuthContext.jsx';
 
 const WEEKDAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 const TABS = [
   { key: 'booking', label: 'Table Booking' },
   { key: 'site', label: 'Restaurant & Checkout' },
+  { key: 'hero', label: 'Hero Carousel' },
   { key: 'account', label: 'My Account' },
 ];
 
@@ -309,6 +311,166 @@ function AccountSettingsForm() {
   );
 }
 
+const EMPTY_SLIDE = { title: '', category: '', description: '', image: '', price: '', rating: '', active: true };
+
+function HeroCarouselForm() {
+  const [slides, setSlides] = useState(null);
+  const [form, setForm] = useState(EMPTY_SLIDE);
+  const [editingId, setEditingId] = useState(null);
+  const [error, setError] = useState('');
+  const [saving, setSaving] = useState(false);
+
+  function load() {
+    return api.get('/heroSlides', { params: { all: true } }).then(({ data }) => setSlides(data.slides));
+  }
+
+  useEffect(() => { load(); }, []);
+
+  function startEdit(slide) {
+    setEditingId(slide._id);
+    setForm({
+      title: slide.title,
+      category: slide.category || '',
+      description: slide.description || '',
+      image: slide.image || '',
+      price: slide.price ?? '',
+      rating: slide.rating ?? '',
+      active: slide.active,
+    });
+    setError('');
+  }
+
+  function resetForm() {
+    setEditingId(null);
+    setForm(EMPTY_SLIDE);
+    setError('');
+  }
+
+  async function handleSubmit(e) {
+    e.preventDefault();
+    setError('');
+    setSaving(true);
+    const payload = {
+      ...form,
+      price: Number(form.price) || 0,
+      rating: Number(form.rating) || 4.5,
+    };
+    try {
+      if (editingId) await api.put(`/heroSlides/${editingId}`, payload);
+      else await api.post('/heroSlides', payload);
+      resetForm();
+      await load();
+    } catch (err) {
+      setError(err.response?.data?.error || 'Could not save this slide.');
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function handleDelete(id) {
+    if (!confirm('Delete this hero slide?')) return;
+    await api.delete(`/heroSlides/${id}`);
+    if (editingId === id) resetForm();
+    load();
+  }
+
+  async function toggleActive(slide) {
+    await api.put(`/heroSlides/${slide._id}`, { active: !slide.active });
+    load();
+  }
+
+  async function move(index, direction) {
+    const target = slides[index + direction];
+    const current = slides[index];
+    if (!target) return;
+    await Promise.all([
+      api.put(`/heroSlides/${current._id}`, { order: target.order }),
+      api.put(`/heroSlides/${target._id}`, { order: current.order }),
+    ]);
+    load();
+  }
+
+  if (!slides) return <p className="page-loading">Loading…</p>;
+
+  return (
+    <div className="admin-grid">
+      <form className="admin-form" onSubmit={handleSubmit}>
+        <h3>{editingId ? 'Edit Slide' : 'New Slide'}</h3>
+        <p className="admin-hint">Controls the homepage hero carousel — independent of the menu, so you can feature whatever you like.</p>
+
+        <label>Title</label>
+        <input required value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} />
+
+        <label>Description</label>
+        <textarea rows={3} value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} />
+
+        <div className="form-row">
+          <div>
+            <label>Tag (e.g. Mains)</label>
+            <input value={form.category} onChange={(e) => setForm({ ...form, category: e.target.value })} placeholder="Mains" />
+          </div>
+          <div>
+            <label>Price ($)</label>
+            <input type="number" min="0" step="0.01" value={form.price} onChange={(e) => setForm({ ...form, price: e.target.value })} />
+          </div>
+        </div>
+
+        <ImageUploadField value={form.image} onChange={(image) => setForm({ ...form, image })} />
+
+        <label>Rating (0–10)</label>
+        <input type="number" min="0" max="10" step="0.1" value={form.rating} onChange={(e) => setForm({ ...form, rating: e.target.value })} />
+
+        <label className="checkbox-row">
+          <input type="checkbox" checked={form.active} onChange={(e) => setForm({ ...form, active: e.target.checked })} />
+          Show on homepage
+        </label>
+
+        {error && <p className="form-error">{error}</p>}
+
+        <div className="form-actions">
+          <button type="submit" className="btn btn-solid" disabled={saving}>
+            {saving ? 'Saving…' : editingId ? 'Save Changes' : 'Add Slide'}
+          </button>
+          {editingId && (
+            <button type="button" className="btn btn-ghost" onClick={resetForm}>Cancel</button>
+          )}
+        </div>
+      </form>
+
+      <div>
+        {slides.length === 0 ? (
+          <p className="admin-hint">No slides yet — add one on the left.</p>
+        ) : (
+          <div className="hero-slide-list">
+            {slides.map((slide, i) => (
+              <div key={slide._id} className={`hero-slide-row${slide.active ? '' : ' inactive'}${editingId === slide._id ? ' editing' : ''}`}>
+                <div className="hero-slide-reorder">
+                  <button type="button" disabled={i === 0} onClick={() => move(i, -1)} aria-label="Move up">▲</button>
+                  <button type="button" disabled={i === slides.length - 1} onClick={() => move(i, 1)} aria-label="Move down">▼</button>
+                </div>
+                {slide.image
+                  ? <img src={slide.image} alt={slide.title} className="hero-slide-thumb" />
+                  : <span className="hero-slide-thumb hero-slide-thumb-empty" />}
+                <div className="hero-slide-info">
+                  <strong>{slide.title}</strong>
+                  <span>{slide.category || 'No tag'} · {Number(slide.price || 0).toFixed(2)}$ · ★ {Number(slide.rating || 0).toFixed(1)}</span>
+                </div>
+                <div className="hero-slide-actions">
+                  <button type="button" className="ap-icon-btn" onClick={() => toggleActive(slide)}>
+                    {slide.active ? 'Hide' : 'Show'}
+                  </button>
+                  <button type="button" className="ap-icon-btn" onClick={() => startEdit(slide)}>Edit</button>
+                  <button type="button" className="ap-icon-btn danger" onClick={() => handleDelete(slide._id)}>Delete</button>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 export default function AdminSettings() {
   const [tab, setTab] = useState('booking');
 
@@ -323,6 +485,7 @@ export default function AdminSettings() {
       </div>
       {tab === 'booking' && <BookingSettingsForm />}
       {tab === 'site' && <SiteSettingsForm />}
+      {tab === 'hero' && <HeroCarouselForm />}
       {tab === 'account' && <AccountSettingsForm />}
     </div>
   );

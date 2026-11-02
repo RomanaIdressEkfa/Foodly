@@ -5,6 +5,7 @@ const Product = require('../api/models/Product');
 const User = require('../api/models/User');
 const Category = require('../api/models/Category');
 const Table = require('../api/models/Table');
+const HeroSlide = require('../api/models/HeroSlide');
 const tables = require('../api/lib/defaultTables');
 
 const categories = [
@@ -126,6 +127,19 @@ const products = [
   },
 ];
 
+// Initial homepage hero carousel — matches the previously-automatic
+// "featured products" rotation, now admin-editable from Admin > Settings >
+// Hero Carousel instead of being derived from the product list.
+const heroSlides = [
+  { title: 'Piña Colada Chicken Salad', category: 'Salads', description: "We're obsessed with the crunchy coconut chicken.", image: '/images/chicken-salad.jpg', price: 18, rating: 9.2, order: 0 },
+  { title: 'Maple Glazed Salmon Fillet', category: 'Mains', description: 'The perfect combination of sweet and savory flavors from a marinade made with maple syrup and soy sauce.', image: '/images/upload-1793592844760-8b94b389.png', price: 14, rating: 7.3, order: 1 },
+  { title: 'Italian Meatball Soup', category: 'Soups', description: "This Italian meatball soup is everything we love - it's as easy as soup + meatballs! A tomato-y broth, noodles and some mini Italian pork meatballs make for a hearty supper everyone's gonna love.", image: '/images/soup.jpg', price: 15, rating: 8.0, order: 2 },
+  { title: "Chef's Roasted Harvest Bowl", category: 'Mains', description: 'Herb-roasted chicken over a colorful medley of roasted root vegetables, finished with fresh rosemary.', image: '/images/hero.jpg', price: 16, rating: 8.8, order: 3 },
+  { title: 'Fried Rice Combo', category: 'Mains', description: 'A hearty plate of wok-fried rice with crisp vegetables and your choice of seasoned meat.', image: '/images/spicy-noodles.png', price: 13, rating: 8.2, order: 4 },
+  { title: 'Spicy Meat Combo Platter', category: 'Mains', description: 'Slow-braised meat in a rich spiced sauce, served with rice and fresh herbs.', image: '/images/spicy-meat-combo-platter.png', price: 17, rating: 8.7, order: 5 },
+  { title: 'Garden Salad', category: 'Salads', description: 'Made with lettuce such as iceberg, romaine or mesclun greens.', image: '/images/upload-1793592858685-499be9bb.png', price: 10, rating: 8.5, order: 6 },
+];
+
 async function run() {
   if (!process.env.MONGODB_URI) {
     console.error('MONGODB_URI is not set. Copy .env.example to .env and fill it in first.');
@@ -147,6 +161,10 @@ async function run() {
   await Table.deleteMany({});
   await Table.insertMany(tables);
   console.log(`Seeded ${tables.length} tables.`);
+
+  await HeroSlide.deleteMany({});
+  await HeroSlide.insertMany(heroSlides);
+  console.log(`Seeded ${heroSlides.length} hero slides.`);
 
   if (process.env.ADMIN_EMAIL && process.env.ADMIN_PASSWORD) {
     const email = process.env.ADMIN_EMAIL.toLowerCase().trim();

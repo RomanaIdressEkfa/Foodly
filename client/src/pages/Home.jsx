@@ -16,21 +16,13 @@ const QUICK_STYLES = [
   { bg: '#ecd5ae', fg: '#8a5a2e' },
 ];
 
-// The hero slider shows a more dramatic photo for these two dishes than
-// their real product photo — product records stay accurate (Top List, Menu,
-// Cart, Product Detail all show the real dish), this only swaps what the
-// homepage hero banner displays.
-const HERO_IMAGE_OVERRIDES = {
-  'Maple Glazed Salmon Fillet': '/images/mutton-curry.png',
-  'Garden Salad': '/images/spicy-noodles.png',
-};
-
 export default function Home() {
   const { addItem } = useCart();
   const { showToast } = useToast();
   const [featured, setFeatured] = useState([]);
   const [drinks, setDrinks] = useState([]);
   const [categories, setCategories] = useState([]);
+  const [heroSlides, setHeroSlides] = useState([]);
 
   useEffect(() => {
     api.get('/products', { params: { featured: true } }).then(({ data }) => {
@@ -38,20 +30,23 @@ export default function Home() {
     });
     api.get('/products', { params: { category: 'Drinks' } }).then(({ data }) => setDrinks(data.products));
     api.get('/categories').then(({ data }) => setCategories(data.categories));
+    // The hero carousel is admin-managed (Admin > Settings > Hero Carousel),
+    // independent of the product catalog — not derived from `featured`.
+    api.get('/heroSlides').then(({ data }) => setHeroSlides(data.slides));
   }, []);
 
   // Home shows up to 7 real categories plus the "Full Menu" tile — the
   // Categories page (via "View All") shows every category, unlimited.
   const homeCategories = [...categories.slice(0, 7), FULL_MENU_TILE];
 
-  const sliderItems = featured.map((p) => ({
-    id: p._id,
-    title: p.name,
-    category: p.category,
-    description: p.description,
-    image: HERO_IMAGE_OVERRIDES[p.name] || p.image,
-    price: p.price,
-    rating: p.rating,
+  const sliderItems = heroSlides.map((s) => ({
+    id: s._id,
+    title: s.title,
+    category: s.category,
+    description: s.description,
+    image: s.image,
+    price: s.price,
+    rating: s.rating,
   }));
 
   return (

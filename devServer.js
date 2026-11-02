@@ -49,6 +49,9 @@ mount('/api/products/:id', './api/products/[id]', 'id');
 mount('/api/categories', './api/categories/index');
 mount('/api/categories/:id', './api/categories/[id]', 'id');
 
+mount('/api/heroSlides', './api/heroSlides/index');
+mount('/api/heroSlides/:id', './api/heroSlides/[id]', 'id');
+
 mount('/api/tables/reset', './api/tables/reset');
 mount('/api/tables', './api/tables/index');
 mount('/api/tables/:id', './api/tables/[id]', 'id');
