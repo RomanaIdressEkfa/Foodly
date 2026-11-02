@@ -1,6 +1,7 @@
 const connectDB = require('../lib/db');
 const Product = require('../models/Product');
 const Order = require('../models/Order');
+const { getSiteSettings } = require('../lib/siteSettings');
 const { withErrors } = require('../lib/handler');
 
 // Guest checkout — no account required. Every order is Cash on Delivery,
@@ -47,6 +48,11 @@ module.exports = withErrors(async (req, res) => {
   }
 
   const total = Math.round(orderItems.reduce((sum, i) => sum + i.price * i.qty, 0) * 100) / 100;
+
+  const siteSettings = await getSiteSettings();
+  if (siteSettings.minOrderAmount > 0 && total < siteSettings.minOrderAmount) {
+    return res.status(400).json({ error: `Minimum order is $${siteSettings.minOrderAmount.toFixed(2)}` });
+  }
 
   const order = await Order.create({
     email: customer?.email?.trim() || undefined,

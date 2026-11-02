@@ -3,8 +3,18 @@ import { Link } from 'react-router-dom';
 import api from '../api';
 import ProductCard from '../components/ProductCard.jsx';
 import HeroSlider from '../components/HeroSlider.jsx';
+import { useCart } from '../context/CartContext.jsx';
+import { useToast } from '../context/ToastContext.jsx';
 
 const FULL_MENU_TILE = { name: 'All', label: 'Full Menu', image: '/images/chicken-salad.jpg', bg: '#f3a3ac' };
+
+// A warm cream/caramel pair for the non-dark Quick Delivery cards — the
+// generic food category palette (green salads, yellow soups…) doesn't fit
+// coffee drinks and clashed with the sage Signature Dishes section above it.
+const QUICK_STYLES = [
+  { bg: '#f4e6c8', fg: '#a3761c' },
+  { bg: '#ecd5ae', fg: '#8a5a2e' },
+];
 
 // The hero slider shows a more dramatic photo for these two dishes than
 // their real product photo — product records stay accurate (Top List, Menu,
@@ -15,57 +25,18 @@ const HERO_IMAGE_OVERRIDES = {
   'Garden Salad': '/images/spicy-noodles.png',
 };
 
-const WHY_FOODLY = [
-  {
-    title: 'Order as a Guest',
-    text: 'No account, no sign-up form. Add dishes to your cart and check out in a couple of taps.',
-    icon: (
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
-        <circle cx="12" cy="8" r="4" /><path d="M4 21c0-4 4-6 8-6s8 2 8 6" />
-        <path d="M18 3v5M15.5 5.5h5" strokeLinecap="round" />
-      </svg>
-    ),
-  },
-  {
-    title: 'Cash on Delivery',
-    text: "Pay the rider when your food arrives — no card details to enter, nothing charged upfront.",
-    icon: (
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
-        <rect x="2" y="6" width="20" height="13" rx="3" /><circle cx="12" cy="12.5" r="3.2" />
-        <path d="M6 6V5a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v1" />
-      </svg>
-    ),
-  },
-  {
-    title: 'Reserve a Table',
-    text: 'Pick a table on our live floor plan and pre-order from the menu before you even arrive.',
-    icon: (
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
-        <rect x="4" y="9" width="16" height="4" rx="1.5" /><path d="M6 13v6M18 13v6M4 9l2-4h12l2 4" strokeLinecap="round" strokeLinejoin="round" />
-      </svg>
-    ),
-  },
-  {
-    title: 'Fresh, Made to Order',
-    text: 'Every dish is cooked after you order it — nothing sits around waiting.',
-    icon: (
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
-        <path d="M12 2c2 3-1 4-1 6.5a3.5 3.5 0 0 0 7 0C18 4 14 2 12 2Z" />
-        <path d="M5 13c1.5 2-1 2.5-1 4.5a3.5 3.5 0 0 0 7 0c0-3-3-4.5-3-7.5" opacity=".7" />
-        <path d="M4 21h16" strokeLinecap="round" />
-      </svg>
-    ),
-  },
-];
-
 export default function Home() {
+  const { addItem } = useCart();
+  const { showToast } = useToast();
   const [featured, setFeatured] = useState([]);
+  const [drinks, setDrinks] = useState([]);
   const [categories, setCategories] = useState([]);
 
   useEffect(() => {
     api.get('/products', { params: { featured: true } }).then(({ data }) => {
       setFeatured(data.products);
     });
+    api.get('/products', { params: { category: 'Drinks' } }).then(({ data }) => setDrinks(data.products));
     api.get('/categories').then(({ data }) => setCategories(data.categories));
   }, []);
 
@@ -117,7 +88,7 @@ export default function Home() {
             <p>All Our Best Plats In One Delicious Snap</p>
           </div>
           <div className="cards">
-            {featured.map((p, i) => (
+            {featured.slice(0, 6).map((p, i) => (
               <ProductCard key={p._id} product={p} index={i} />
             ))}
           </div>
@@ -127,44 +98,72 @@ export default function Home() {
         </div>
       </section>
 
-      <section className="why-foodly">
+      <section className="signature-dishes">
         <div className="wrap">
           <div className="section-head">
-            <h2>Why Order With Foodly</h2>
-            <p>No app, no account, no prepayment — just good food, made simple</p>
+            <span className="section-eyebrow">Popular Choice</span>
+            <h2 className="section-flourish-title">Our Signature Dishes</h2>
           </div>
-          <div className="why-grid">
-            {WHY_FOODLY.map((item, i) => (
-              <div key={item.title} className="why-card" style={{ '--tilt': i % 2 === 0 ? '-10px' : '10px' }}>
-                <span className="why-icon">{item.icon}</span>
-                <h3>{item.title}</h3>
-                <p>{item.text}</p>
+          <div className="signature-grid">
+            {featured.slice(0, 3).map((p) => (
+              <div key={p._id} className="signature-card">
+                <div className="signature-photo">
+                  <span className="signature-blob" />
+                  <img src={p.image} alt={p.name} />
+                </div>
+                <h3>{p.name}</h3>
+                <span className="signature-price">{p.price.toFixed(2)}$</span>
+                <Link to={`/product/${p._id}`} className="btn btn-solid btn-sm">
+                  Order Now
+                </Link>
               </div>
             ))}
           </div>
         </div>
       </section>
 
-      <section className="booking-promo">
-        <div className="wrap booking-promo-inner">
-          <div className="booking-promo-text">
-            <span className="booking-promo-tag">Dine with us</span>
-            <h2>Reserve your table in under a minute</h2>
-            <p className="lead">
-              Pick a table on our live floor plan, choose your time, and pre-order from the
-              menu if you'd like your food ready when you sit down.
-            </p>
-            <Link to="/book-table" className="btn btn-solid">
-              Book a Table
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                <path d="M5 12h14M13 6l6 6-6 6" />
-              </svg>
-            </Link>
+      <section className="quick-delivery">
+        <div className="wrap">
+          <div className="section-head" style={{ textAlign: 'left' }}>
+            <h2>Quick Delivery</h2>
           </div>
-          <div className="booking-promo-art">
-            <img src="/images/mutton-curry.png" alt="" className="bp-photo bp-photo-1" />
-            <img src="/images/pizza.png" alt="" className="bp-photo bp-photo-2" />
-            <span className="bp-blob" aria-hidden="true" />
+          <div className="quick-grid">
+            {drinks.slice(0, 3).map((p, i) => (
+              <Link
+                key={p._id}
+                to={`/product/${p._id}`}
+                className={`quick-card${i === 0 ? ' quick-card-dark' : ''}`}
+                style={i === 0 ? undefined : { background: QUICK_STYLES[(i - 1) % QUICK_STYLES.length].bg }}
+              >
+                <div className="quick-photo">
+                  <span className="quick-photo-blob" />
+                  <img src={p.image} alt={p.name} />
+                  <span className="quick-badge">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="M4 9h13v5a5 5 0 0 1-5 5H9a5 5 0 0 1-5-5V9Z" /><path d="M17 10h1.5a2.5 2.5 0 0 1 0 5H17" /><path d="M7 3c-.5 1 .5 1.5 0 2.5M11 3c-.5 1 .5 1.5 0 2.5" strokeLinecap="round" /></svg>
+                  </span>
+                </div>
+                <div className="quick-body">
+                  <strong>{p.name}</strong>
+                  <span className="quick-sub">{p.description}</span>
+                  <div className="quick-row">
+                    <span className="quick-price" style={i === 0 ? undefined : { color: QUICK_STYLES[(i - 1) % QUICK_STYLES.length].fg }}>{p.price.toFixed(2)}$</span>
+                    <span className="quick-btn-group">
+                      <span className="quick-icon-btn" title={`${p.rating?.toFixed(1)} rating`}>
+                        <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l3.1 6.3 6.9 1-5 4.9 1.2 6.9L12 17.8 5.8 21l1.2-6.9-5-4.9 6.9-1z" /></svg>
+                      </span>
+                      <button
+                        type="button"
+                        className="quick-icon-btn quick-add"
+                        aria-label={`Add ${p.name} to cart`}
+                        onClick={(e) => { e.preventDefault(); addItem(p, 1); showToast(`${p.name} added to cart`); }}
+                      >
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round"><path d="M12 5v14M5 12h14" /></svg>
+                      </button>
+                    </span>
+                  </div>
+                </div>
+              </Link>
+            ))}
           </div>
         </div>
       </section>

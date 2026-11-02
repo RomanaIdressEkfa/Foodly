@@ -37,7 +37,7 @@ export default function App() {
           <Route path="/product/:id" element={<ProductDetail />} />
           <Route path="/cart" element={<Cart />} />
           <Route path="/checkout" element={<Checkout />} />
-          <Route path="/order/success" element={<OrderSuccess />} />
+          <Route path="/order/success/:id" element={<OrderSuccess />} />
           <Route path="/book-table" element={<BookTable />} />
           <Route path="/booking/success/:id" element={<BookingSuccess />} />
           <Route path="/admin" element={<AdminGate />}>

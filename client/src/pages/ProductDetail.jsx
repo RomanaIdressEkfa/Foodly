@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import api from '../api';
 import { useCart } from '../context/CartContext.jsx';
+import { useToast } from '../context/ToastContext.jsx';
 
 const INGREDIENT_ICONS = [
   { label: 'Tomato', color: '#d9443a' },
@@ -16,6 +17,7 @@ export default function ProductDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
   const { addItem } = useCart();
+  const { showToast } = useToast();
   const [product, setProduct] = useState(null);
   const [qty, setQty] = useState(1);
   const [added, setAdded] = useState(false);
@@ -33,6 +35,7 @@ export default function ProductDetail() {
 
   function handleAdd() {
     addItem(product, qty);
+    showToast(`${product.name} added to cart`);
     setAdded(true);
     setTimeout(() => setAdded(false), 1500);
   }

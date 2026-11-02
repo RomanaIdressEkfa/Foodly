@@ -1,9 +1,15 @@
 import { useEffect, useState } from 'react';
 import api from '../../api';
+import { useAuth } from '../../context/AuthContext.jsx';
 
 const WEEKDAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+const TABS = [
+  { key: 'booking', label: 'Table Booking' },
+  { key: 'site', label: 'Restaurant & Checkout' },
+  { key: 'account', label: 'My Account' },
+];
 
-export default function AdminSettings() {
+function BookingSettingsForm() {
   const [settings, setSettings] = useState(null);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
@@ -50,7 +56,7 @@ export default function AdminSettings() {
     }
   }
 
-  if (!settings) return <p>Loading…</p>;
+  if (!settings) return <p className="page-loading">Loading…</p>;
 
   return (
     <form className="admin-form settings-form" onSubmit={handleSubmit} style={{ maxWidth: 560 }}>
@@ -129,5 +135,195 @@ export default function AdminSettings() {
         {saved && <span className="settings-saved">Saved ✓</span>}
       </div>
     </form>
+  );
+}
+
+function SiteSettingsForm() {
+  const [settings, setSettings] = useState(null);
+  const [saving, setSaving] = useState(false);
+  const [saved, setSaved] = useState(false);
+  const [error, setError] = useState('');
+
+  useEffect(() => {
+    api.get('/settings/site').then(({ data }) => setSettings(data.settings));
+  }, []);
+
+  function set(field) {
+    return (e) => setSettings((s) => ({ ...s, [field]: e.target.value }));
+  }
+
+  async function handleSubmit(e) {
+    e.preventDefault();
+    setSaving(true);
+    setSaved(false);
+    setError('');
+    try {
+      const { data } = await api.put('/settings/site', {
+        ...settings,
+        minOrderAmount: Number(settings.minOrderAmount) || 0,
+        estimatedDeliveryMinutes: Number(settings.estimatedDeliveryMinutes) || 0,
+      });
+      setSettings(data.settings);
+      setSaved(true);
+      setTimeout(() => setSaved(false), 2500);
+    } catch (err) {
+      setError(err.response?.data?.error || 'Could not save settings.');
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  if (!settings) return <p className="page-loading">Loading…</p>;
+
+  return (
+    <form className="admin-form settings-form" onSubmit={handleSubmit} style={{ maxWidth: 560 }}>
+      <h3>Restaurant Profile</h3>
+      <p className="admin-hint">Shown in the site footer and used for checkout rules.</p>
+
+      <label>Restaurant name</label>
+      <input value={settings.restaurantName} onChange={set('restaurantName')} />
+
+      <div className="form-row">
+        <div>
+          <label>Phone</label>
+          <input value={settings.phone} onChange={set('phone')} placeholder="+1 555 123 4567" />
+        </div>
+        <div>
+          <label>Email</label>
+          <input type="email" value={settings.email} onChange={set('email')} placeholder="hello@foodly.com" />
+        </div>
+      </div>
+
+      <label>Address</label>
+      <textarea rows={3} value={settings.address} onChange={set('address')} placeholder={'123 Main Street\nSpringfield'} />
+      <p className="admin-hint">One line per address row — shown in the footer exactly as entered.</p>
+
+      <h3 style={{ marginTop: 10 }}>Checkout Rules</h3>
+      <div className="form-row">
+        <div>
+          <label>Minimum order amount ($, 0 = no minimum)</label>
+          <input type="number" min="0" step="0.5" value={settings.minOrderAmount} onChange={set('minOrderAmount')} />
+        </div>
+        <div>
+          <label>Estimated delivery time (minutes)</label>
+          <input type="number" min="5" step="5" value={settings.estimatedDeliveryMinutes} onChange={set('estimatedDeliveryMinutes')} />
+        </div>
+      </div>
+      <p className="admin-hint">Shown to customers at checkout.</p>
+
+      <label>Cash on Delivery note</label>
+      <textarea rows={2} value={settings.codNote} onChange={set('codNote')} />
+      <p className="admin-hint">Shown on the Checkout page.</p>
+
+      {error && <p className="form-error">{error}</p>}
+      <div className="form-actions">
+        <button type="submit" className="btn btn-solid" disabled={saving}>
+          {saving ? 'Saving…' : 'Save Settings'}
+        </button>
+        {saved && <span className="settings-saved">Saved ✓</span>}
+      </div>
+    </form>
+  );
+}
+
+function AccountSettingsForm() {
+  const { user, refresh } = useAuth();
+  const [form, setForm] = useState({ name: '', email: '', currentPassword: '', newPassword: '', confirmPassword: '' });
+  const [saving, setSaving] = useState(false);
+  const [saved, setSaved] = useState(false);
+  const [error, setError] = useState('');
+
+  useEffect(() => {
+    if (user) setForm((f) => ({ ...f, name: user.name, email: user.email }));
+  }, [user]);
+
+  function set(field) {
+    return (e) => setForm((f) => ({ ...f, [field]: e.target.value }));
+  }
+
+  async function handleSubmit(e) {
+    e.preventDefault();
+    setError('');
+    if (form.newPassword && form.newPassword !== form.confirmPassword) {
+      setError('New password and confirmation do not match.');
+      return;
+    }
+    setSaving(true);
+    setSaved(false);
+    try {
+      await api.put('/auth/me', {
+        name: form.name,
+        email: form.email,
+        currentPassword: form.currentPassword || undefined,
+        newPassword: form.newPassword || undefined,
+      });
+      await refresh();
+      setForm((f) => ({ ...f, currentPassword: '', newPassword: '', confirmPassword: '' }));
+      setSaved(true);
+      setTimeout(() => setSaved(false), 2500);
+    } catch (err) {
+      setError(err.response?.data?.error || 'Could not save account changes.');
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  if (!user) return <p className="page-loading">Loading…</p>;
+
+  return (
+    <form className="admin-form settings-form" onSubmit={handleSubmit} style={{ maxWidth: 480 }}>
+      <h3>My Account</h3>
+      <p className="admin-hint">Update your own name, email, or password.</p>
+
+      <label>Name</label>
+      <input required value={form.name} onChange={set('name')} />
+
+      <label>Email</label>
+      <input type="email" required value={form.email} onChange={set('email')} />
+
+      <h3 style={{ marginTop: 10 }}>Change Password</h3>
+      <p className="admin-hint">Leave blank to keep your current password.</p>
+
+      <label>Current password</label>
+      <input type="password" value={form.currentPassword} onChange={set('currentPassword')} autoComplete="current-password" />
+
+      <div className="form-row">
+        <div>
+          <label>New password</label>
+          <input type="password" value={form.newPassword} onChange={set('newPassword')} autoComplete="new-password" />
+        </div>
+        <div>
+          <label>Confirm new password</label>
+          <input type="password" value={form.confirmPassword} onChange={set('confirmPassword')} autoComplete="new-password" />
+        </div>
+      </div>
+
+      {error && <p className="form-error">{error}</p>}
+      <div className="form-actions">
+        <button type="submit" className="btn btn-solid" disabled={saving}>
+          {saving ? 'Saving…' : 'Save Account'}
+        </button>
+        {saved && <span className="settings-saved">Saved ✓</span>}
+      </div>
+    </form>
+  );
+}
+
+export default function AdminSettings() {
+  const [tab, setTab] = useState('booking');
+
+  return (
+    <div>
+      <div className="floor-tabs settings-tabs">
+        {TABS.map((t) => (
+          <button key={t.key} type="button" className={tab === t.key ? 'active' : ''} onClick={() => setTab(t.key)}>
+            {t.label}
+          </button>
+        ))}
+      </div>
+      {tab === 'booking' && <BookingSettingsForm />}
+      {tab === 'site' && <SiteSettingsForm />}
+      {tab === 'account' && <AccountSettingsForm />}
+    </div>
   );
 }

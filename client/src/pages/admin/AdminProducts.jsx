@@ -138,7 +138,7 @@ export default function AdminProducts() {
 
         {error && <p className="form-error">{error}</p>}
 
-        <div className="form-row">
+        <div className="form-actions">
           <button type="submit" className="btn btn-solid">{editingId ? 'Save Changes' : 'Add Product'}</button>
           {editingId && (
             <button type="button" className="btn btn-ghost" onClick={resetForm}>Cancel</button>

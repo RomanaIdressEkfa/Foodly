@@ -5,25 +5,7 @@ const Product = require('../api/models/Product');
 const User = require('../api/models/User');
 const Category = require('../api/models/Category');
 const Table = require('../api/models/Table');
-
-// Square tables with 6+ seats render as long tables spanning two rows.
-const tables = [
-  { name: 'T1', capacity: 2, shape: 'square', floor: 'Main floor', row: 1, col: 1 },
-  { name: 'T2', capacity: 4, shape: 'square', floor: 'Main floor', row: 1, col: 2 },
-  { name: 'T3', capacity: 4, shape: 'square', floor: 'Main floor', row: 1, col: 3 },
-  { name: 'T4', capacity: 4, shape: 'square', floor: 'Main floor', row: 1, col: 4 },
-  { name: 'T5', capacity: 8, shape: 'square', floor: 'Main floor', row: 1, col: 5 },
-  { name: 'T6', capacity: 2, shape: 'square', floor: 'Main floor', row: 2, col: 1 },
-  { name: 'T7', capacity: 4, shape: 'square', floor: 'Main floor', row: 2, col: 2 },
-  { name: 'T8', capacity: 6, shape: 'square', floor: 'Main floor', row: 2, col: 4 },
-  { name: 'T9', capacity: 2, shape: 'round', floor: 'Main floor', row: 3, col: 1 },
-  { name: 'T10', capacity: 4, shape: 'round', floor: 'Main floor', row: 3, col: 2 },
-  { name: 'T11', capacity: 4, shape: 'round', floor: 'Main floor', row: 3, col: 3 },
-  { name: 'T12', capacity: 6, shape: 'round', floor: 'Main floor', row: 3, col: 5 },
-  { name: 'P1', capacity: 2, shape: 'round', floor: 'Patio', row: 1, col: 1 },
-  { name: 'P2', capacity: 4, shape: 'round', floor: 'Patio', row: 1, col: 2 },
-  { name: 'P3', capacity: 6, shape: 'square', floor: 'Patio', row: 1, col: 3 },
-];
+const tables = require('../api/lib/defaultTables');
 
 const categories = [
   { name: 'Salads', bg: '#cfe6a8', fg: '#4f7a3f', image: '/images/salad-fresh.png' },
@@ -104,10 +86,43 @@ const products = [
     description: 'Slow-braised meat in a rich spiced sauce, served with rice and fresh herbs.',
     price: 17,
     category: 'Mains',
-    image: '/images/mutton-curry.png',
+    image: '/images/spicy-meat-combo-platter.png',
     rating: 8.7,
     featured: true,
     stock: 30,
+  },
+  {
+    // Not featured — shown only in the homepage "Quick Delivery" section
+    // (fetched by category), kept out of the Hero slider / Top List / Our
+    // Signature Dishes, which all pull from the featured list.
+    name: 'Classic Latte',
+    description: 'Espresso and steamed milk, finished with hand-poured latte art.',
+    price: 4.5,
+    category: 'Drinks',
+    image: '/images/classic-latte.png',
+    rating: 9.0,
+    featured: false,
+    stock: 60,
+  },
+  {
+    name: 'Cappuccino Supreme',
+    description: 'Rich espresso topped with whipped cream and a dusting of cinnamon.',
+    price: 4.9,
+    category: 'Drinks',
+    image: '/images/cappuccino-cream.png',
+    rating: 8.8,
+    featured: false,
+    stock: 60,
+  },
+  {
+    name: 'Matcha Latte',
+    description: 'Stone-ground matcha whisked with steamed milk, earthy, smooth, lightly sweet.',
+    price: 5.2,
+    category: 'Drinks',
+    image: '/images/matcha-latte.png',
+    rating: 8.9,
+    featured: false,
+    stock: 60,
   },
 ];
 

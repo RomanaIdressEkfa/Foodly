@@ -49,8 +49,11 @@ mount('/api/products/:id', './api/products/[id]', 'id');
 mount('/api/categories', './api/categories/index');
 mount('/api/categories/:id', './api/categories/[id]', 'id');
 
+mount('/api/tables/reset', './api/tables/reset');
 mount('/api/tables', './api/tables/index');
 mount('/api/tables/:id', './api/tables/[id]', 'id');
+
+mount('/api/settings/site', './api/settings/site');
 
 mount('/api/bookings/availability', './api/bookings/availability');
 mount('/api/bookings/settings', './api/bookings/settings');

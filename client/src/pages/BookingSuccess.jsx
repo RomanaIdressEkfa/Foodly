@@ -9,6 +9,37 @@ const STATUS_LABEL = {
   cancelled: 'Cancelled',
 };
 
+const ICONS = {
+  calendar: (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9"><rect x="3" y="5" width="18" height="16" rx="3" /><path d="M3 10h18M8 3v4M16 3v4" strokeLinecap="round" /></svg>
+  ),
+  clock: (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9"><circle cx="12" cy="12" r="9" /><path d="M12 7v5l3 2" strokeLinecap="round" /></svg>
+  ),
+  guests: (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9"><circle cx="9" cy="8" r="3.2" /><path d="M3 20c0-3.3 2.7-5.5 6-5.5s6 2.2 6 5.5" strokeLinecap="round" /><circle cx="17" cy="9" r="2.4" /><path d="M16 14.6c2.7.2 5 2 5 5" strokeLinecap="round" /></svg>
+  ),
+  table: (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9"><rect x="3" y="7" width="18" height="5" rx="2" /><path d="M6 12v6M18 12v6" strokeLinecap="round" /></svg>
+  ),
+  user: (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9"><circle cx="12" cy="8" r="4" /><path d="M4 20c0-4.4 3.6-7 8-7s8 2.6 8 7" strokeLinecap="round" /></svg>
+  ),
+  phone: (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9"><path d="M5 4h4l2 5-2.5 1.5a11 11 0 0 0 5 5L15 13l5 2v4a2 2 0 0 1-2 2A16 16 0 0 1 3 6a2 2 0 0 1 2-2z" strokeLinecap="round" strokeLinejoin="round" /></svg>
+  ),
+};
+
+function DetailRow({ icon, label, value }) {
+  return (
+    <div className="bsp-row">
+      <span className="bsp-row-icon">{ICONS[icon]}</span>
+      <span className="bsp-row-label">{label}</span>
+      <strong className="bsp-row-value">{value}</strong>
+    </div>
+  );
+}
+
 export default function BookingSuccess() {
   const { id } = useParams();
   const location = useLocation();
@@ -25,9 +56,9 @@ export default function BookingSuccess() {
 
   if (notFound) {
     return (
-      <section className="order-success">
+      <section className="booking-success-page">
         <div className="wrap">
-          <p>
+          <p className="page-loading">
             Booking not found. <Link to="/book-table">Book a table</Link>
           </p>
         </div>
@@ -37,61 +68,70 @@ export default function BookingSuccess() {
 
   if (!booking) {
     return (
-      <section className="order-success">
-        <div className="wrap">
-          <p>Loading your booking…</p>
-        </div>
+      <section className="booking-success-page">
+        <div className="wrap"><p className="page-loading">Loading your booking…</p></div>
       </section>
     );
   }
 
-  return (
-    <section className="order-success">
-      <div className="wrap">
-        <div className="success-badge">✓</div>
-        <h2>Your table is booked!</h2>
-        <p className="auth-sub">
-          Booking #{booking._id.slice(-6).toUpperCase()} · <span className={`status-pill status-${booking.status === 'confirmed' ? 'fulfilled' : booking.status === 'cancelled' ? 'cancelled' : 'pending'}`}>{STATUS_LABEL[booking.status]}</span>
-        </p>
+  const statusClass = booking.status === 'confirmed' ? 'fulfilled' : booking.status === 'cancelled' ? 'cancelled' : 'pending';
 
-        <div className="invoice-card">
-          <div className="invoice-row"><span>Name</span><strong>{booking.customerName}</strong></div>
-          <div className="invoice-row"><span>Table</span><strong>{booking.tableName}</strong></div>
-          <div className="invoice-row"><span>Date</span><strong>{booking.date}</strong></div>
-          <div className="invoice-row"><span>Time</span><strong>{booking.time}</strong></div>
-          <div className="invoice-row"><span>Party size</span><strong>{booking.partySize}</strong></div>
-          <div className="invoice-row"><span>Phone</span><strong>{booking.phone}</strong></div>
+  return (
+    <section className="booking-success-page">
+      <div className="wrap bsp-wrap">
+        <div className="bsp-hero">
+          <div className="bsp-rings">
+            <div className="bsp-badge">✓</div>
+          </div>
+          <h2>Your table is booked!</h2>
+          <p className="bsp-ref">
+            Booking #{booking._id.slice(-6).toUpperCase()} <span className={`status-pill status-${statusClass}`}>{STATUS_LABEL[booking.status]}</span>
+          </p>
+          <p className="bsp-hint">Show this confirmation when you arrive at the restaurant — no account or login needed.</p>
+          <div className="bsp-actions">
+            <button type="button" className="btn btn-solid" onClick={() => downloadBookingInvoice(booking)}>
+              Download invoice (PDF)
+            </button>
+            <Link to="/" className="btn btn-ghost">Back to Home</Link>
+          </div>
         </div>
 
-        {booking.items.length > 0 && (
-          <>
-            <h3 className="booking-section-title" style={{ textAlign: 'left' }}>Pre-ordered items</h3>
-            <div className="cart-list">
-              {booking.items.map((item) => (
-                <div key={item.name} className="cart-row">
-                  <div className="cart-row-info">
-                    <h4>{item.name}</h4>
-                    <span>Qty {item.qty}</span>
-                  </div>
-                  <span className="cart-row-total">{(item.price * item.qty).toFixed(2)}$</span>
-                </div>
-              ))}
-            </div>
-            <div className="cart-summary">
-              <span>Pre-order total</span>
-              <strong>{booking.total.toFixed(2)}$</strong>
-            </div>
-          </>
-        )}
+        <div className="bsp-card">
+          <h3>Booking details</h3>
+          <div className="bsp-rows">
+            <DetailRow icon="user" label="Name" value={booking.customerName} />
+            <DetailRow icon="table" label="Table" value={booking.tableName} />
+            <DetailRow icon="calendar" label="Date" value={booking.date} />
+            <DetailRow icon="clock" label="Time" value={booking.time} />
+            <DetailRow icon="guests" label="Guests" value={booking.partySize} />
+            <DetailRow icon="phone" label="Phone" value={booking.phone} />
+          </div>
 
-        <p className="auth-sub" style={{ marginTop: 20 }}>
-          Show this confirmation when you arrive at the restaurant.
-        </p>
-        <div style={{ display: 'flex', gap: 12, justifyContent: 'center', flexWrap: 'wrap', marginTop: 10 }}>
-          <button type="button" className="btn btn-solid" onClick={() => downloadBookingInvoice(booking)}>
-            Download invoice (PDF)
-          </button>
-          <Link to="/" className="btn btn-ghost">Back to Home</Link>
+          {booking.items.length > 0 && (
+            <>
+              <h4 className="bsp-items-title">Pre-ordered items</h4>
+              <div className="bsp-items">
+                {booking.items.map((item) => (
+                  <div key={item.name} className="bsp-item">
+                    <div className="bsp-item-img">
+                      {item.image
+                        ? <img src={item.image} alt={item.name} />
+                        : <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" width="18" height="18"><path d="M12 3a9 9 0 1 0 0 18A9 9 0 0 0 12 3z" /><path d="M12 8v4l3 3" strokeLinecap="round" /></svg>}
+                    </div>
+                    <div className="bsp-item-text">
+                      <strong>{item.name}</strong>
+                      <span>Qty {item.qty}</span>
+                    </div>
+                    <span className="bsp-item-price">{(item.price * item.qty).toFixed(2)}$</span>
+                  </div>
+                ))}
+              </div>
+              <div className="bsp-total">
+                <span>Pre-order total</span>
+                <strong>{booking.total.toFixed(2)}$</strong>
+              </div>
+            </>
+          )}
         </div>
       </div>
     </section>

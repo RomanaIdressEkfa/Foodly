@@ -1,4 +1,15 @@
+import { useEffect, useState } from 'react';
+import api from '../api';
+
 export default function Footer() {
+  const [settings, setSettings] = useState(null);
+
+  useEffect(() => {
+    api.get('/settings/site').then(({ data }) => setSettings(data.settings)).catch(() => {});
+  }, []);
+
+  const addressLines = settings?.address ? settings.address.split('\n').filter(Boolean) : [];
+
   return (
     <footer>
       <div className="wrap">
@@ -33,11 +44,17 @@ export default function Footer() {
             <ul><li><a href="#">About Us</a></li><li><a href="#">Our Mission</a></li><li><a href="#">Subscription</a></li></ul>
           </div>
           <div>
-            <h3>Address</h3>
-            <ul><li>Morocco,</li><li>Marrakesh 29</li><li>Plaza World</li></ul>
+            <h3>Contact</h3>
+            <ul>
+              {addressLines.length > 0
+                ? addressLines.map((line, i) => <li key={i}>{line}</li>)
+                : <li>Address not set yet</li>}
+              {settings?.phone && <li>{settings.phone}</li>}
+              {settings?.email && <li>{settings.email}</li>}
+            </ul>
           </div>
         </div>
-        <div className="foot-bottom">Copyright © 2026 Foodly. All rights reserved.</div>
+        <div className="foot-bottom">Copyright © 2026 {settings?.restaurantName || 'Foodly'}. All rights reserved.</div>
       </div>
     </footer>
   );

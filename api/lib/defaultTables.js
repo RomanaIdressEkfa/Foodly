@@ -1,0 +1,25 @@
+// The restaurant's canonical floor plan. Used to seed a fresh database and
+// to let admins reset the layout if tables get dragged into a jumbled mess.
+module.exports = [
+  { name: 'T1', capacity: 2, shape: 'square', floor: 'Main floor', row: 1, col: 1 },
+  { name: 'T2', capacity: 4, shape: 'square', floor: 'Main floor', row: 1, col: 2 },
+  { name: 'T3', capacity: 4, shape: 'square', floor: 'Main floor', row: 1, col: 3 },
+  { name: 'T4', capacity: 4, shape: 'square', floor: 'Main floor', row: 1, col: 4 },
+  { name: 'T5', capacity: 8, shape: 'square', floor: 'Main floor', row: 1, col: 5 },
+  { name: 'T14', capacity: 4, shape: 'square', floor: 'Main floor', row: 1, col: 6 },
+  { name: 'T17', capacity: 2, shape: 'square', floor: 'Main floor', row: 1, col: 7 },
+  { name: 'T6', capacity: 2, shape: 'square', floor: 'Main floor', row: 2, col: 1 },
+  { name: 'T7', capacity: 4, shape: 'square', floor: 'Main floor', row: 2, col: 2 },
+  { name: 'T13', capacity: 2, shape: 'round', floor: 'Main floor', row: 2, col: 3 },
+  { name: 'T8', capacity: 6, shape: 'square', floor: 'Main floor', row: 2, col: 4 },
+  { name: 'T15', capacity: 4, shape: 'round', floor: 'Main floor', row: 2, col: 6 },
+  { name: 'T18', capacity: 6, shape: 'square', floor: 'Main floor', row: 2, col: 7 },
+  { name: 'T9', capacity: 2, shape: 'round', floor: 'Main floor', row: 3, col: 1 },
+  { name: 'T10', capacity: 4, shape: 'round', floor: 'Main floor', row: 3, col: 2 },
+  { name: 'T11', capacity: 4, shape: 'round', floor: 'Main floor', row: 3, col: 3 },
+  { name: 'T12', capacity: 6, shape: 'round', floor: 'Main floor', row: 3, col: 5 },
+  { name: 'T16', capacity: 2, shape: 'round', floor: 'Main floor', row: 3, col: 6 },
+  { name: 'P1', capacity: 2, shape: 'round', floor: 'Patio', row: 1, col: 1 },
+  { name: 'P2', capacity: 4, shape: 'round', floor: 'Patio', row: 1, col: 2 },
+  { name: 'P3', capacity: 6, shape: 'square', floor: 'Patio', row: 1, col: 3 },
+];

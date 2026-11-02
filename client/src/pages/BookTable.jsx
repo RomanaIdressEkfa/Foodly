@@ -4,27 +4,41 @@ import api from '../api';
 import FloorPlan from '../components/FloorPlan.jsx';
 import PickerDropdown from '../components/PickerDropdown.jsx';
 import { bookingRef, downloadBookingInvoice } from '../lib/invoicePdf.js';
+import { useToast } from '../context/ToastContext.jsx';
 
 // Local date (not UTC), so late-night visitors don't get yesterday's date.
 function localDate(d = new Date()) {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 }
 const TODAY = localDate();
-const UPCOMING_DAYS = Array.from({ length: 14 }, (_, i) => {
-  const d = new Date();
-  d.setDate(d.getDate() + i);
-  return localDate(d);
-});
 
-// Opening hours: 11:00 to 22:30, every 30 minutes.
-const TIME_SLOTS = Array.from({ length: 24 }, (_, i) => {
-  const minutes = 11 * 60 + i * 30;
+function toMinutes(time) {
+  const [h, m] = String(time).split(':').map(Number);
+  return h * 60 + (m || 0);
+}
+function toTime(minutes) {
   return `${String(Math.floor(minutes / 60)).padStart(2, '0')}:${String(minutes % 60).padStart(2, '0')}`;
-});
-const SLOT_GROUPS = [
-  { label: 'Lunch', slots: TIME_SLOTS.filter((s) => s < '16:00') },
-  { label: 'Dinner', slots: TIME_SLOTS.filter((s) => s >= '16:00') },
-];
+}
+
+// Mirrors api/lib/bookingSettings.js so the picker only ever offers slots
+// and dates the server will actually accept — driven by Admin Settings
+// instead of a hardcoded schedule.
+function timeSlotsFor(settings) {
+  const slots = [];
+  for (let m = toMinutes(settings.openTime); m <= toMinutes(settings.lastBookingTime); m += settings.slotMinutes) {
+    slots.push(toTime(m));
+  }
+  return slots;
+}
+function upcomingDaysFor(settings) {
+  const days = [];
+  for (let i = 0; i < settings.daysAhead; i++) {
+    const cursor = new Date();
+    cursor.setDate(cursor.getDate() + i);
+    days.push(localDate(cursor));
+  }
+  return days.filter((d) => !settings.closedDays.includes(new Date(`${d}T00:00:00`).getDay()));
+}
 
 function formatSlot(slot) {
   const [h, m] = slot.split(':').map(Number);
@@ -71,6 +85,8 @@ function Row({ label, value }) {
 }
 
 export default function BookTable() {
+  const { showToast } = useToast();
+  const [settings, setSettings] = useState(null);
   const [tables, setTables] = useState([]);
   const [products, setProducts] = useState([]);
   const [bookedIds, setBookedIds] = useState([]);
@@ -91,15 +107,38 @@ export default function BookTable() {
   useEffect(() => {
     api.get('/tables').then(({ data }) => setTables(data.tables));
     api.get('/products').then(({ data }) => setProducts(data.products));
+    api.get('/bookings/settings').then(({ data }) => setSettings(data.settings));
   }, []);
+
+  // Driven by Admin Settings, not a hardcoded schedule.
+  const TIME_SLOTS = useMemo(() => (settings ? timeSlotsFor(settings) : []), [settings]);
+  const UPCOMING_DAYS = useMemo(() => (settings ? upcomingDaysFor(settings) : []), [settings]);
+  const SLOT_GROUPS = useMemo(() => {
+    if (!settings) return [];
+    return [
+      { label: 'Lunch', slots: TIME_SLOTS.filter((s) => s < settings.dinnerStart) },
+      { label: 'Dinner', slots: TIME_SLOTS.filter((s) => s >= settings.dinnerStart) },
+    ];
+  }, [settings, TIME_SLOTS]);
+
+  // Once settings load, snap date/time onto a slot the server will accept.
+  useEffect(() => {
+    if (!settings || UPCOMING_DAYS.length === 0) return;
+    if (!UPCOMING_DAYS.includes(date)) setDate(UPCOMING_DAYS[0]);
+  }, [settings, UPCOMING_DAYS]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => {
+    if (!settings || TIME_SLOTS.length === 0) return;
+    if (!TIME_SLOTS.includes(time)) setTime(TIME_SLOTS.find((s) => !slotIsPast(date, s)) || TIME_SLOTS[0]);
+  }, [settings, TIME_SLOTS]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // If the chosen time has already passed today, jump to the next open slot.
   useEffect(() => {
-    if (!slotIsPast(date, time)) return;
+    if (TIME_SLOTS.length === 0 || !slotIsPast(date, time)) return;
     const next = TIME_SLOTS.find((s) => !slotIsPast(date, s));
     if (next) setTime(next);
-    else setDate(UPCOMING_DAYS[1]); // closed for today — move to tomorrow
-  }, [date, time]);
+    else if (UPCOMING_DAYS[1]) setDate(UPCOMING_DAYS[1]); // closed for today — move to tomorrow
+  }, [date, time, TIME_SLOTS, UPCOMING_DAYS]);
 
   useEffect(() => {
     if (!date || !time) return;
@@ -112,7 +151,8 @@ export default function BookTable() {
   const table = tables.find((t) => t._id === tableId);
   const guests = Number(partySize) || 0;
   const maxSeats = Math.max(2, ...tables.map((t) => t.capacity));
-  const guestOptions = Array.from({ length: maxSeats }, (_, i) => i + 1);
+  const guestCap = settings?.maxGuests > 0 ? Math.min(maxSeats, settings.maxGuests) : maxSeats;
+  const guestOptions = Array.from({ length: guestCap }, (_, i) => i + 1);
 
   // Drop the selection if it becomes unavailable after a date/time/size change.
   useEffect(() => {
@@ -169,6 +209,7 @@ export default function BookTable() {
       });
       setBooking(data.booking);
       setConfirmOpen(false);
+      showToast(`Table ${data.booking.tableName} booked for ${formatSlot(data.booking.time)} 🎉`);
     } catch (err) {
       setError(err.response?.data?.error || 'Could not complete the booking.');
       setConfirmOpen(false);
@@ -186,6 +227,27 @@ export default function BookTable() {
     setPhone('');
     setEmail('');
     api.get('/bookings/availability', { params: { date, time } }).then(({ data }) => setBookedIds(data.bookedTableIds));
+  }
+
+  if (!settings) {
+    return (
+      <section className="menu-page booking-page">
+        <div className="wrap"><p className="page-loading">Loading…</p></div>
+      </section>
+    );
+  }
+
+  if (!settings.enabled) {
+    return (
+      <section className="menu-page booking-page">
+        <div className="wrap">
+          <div className="section-head">
+            <h2>Book a Table</h2>
+            <p>Online table booking is paused right now — please call the restaurant to reserve a table.</p>
+          </div>
+        </div>
+      </section>
+    );
   }
 
   return (
@@ -210,23 +272,33 @@ export default function BookTable() {
                 <PickerDropdown icon={ICONS.calendar} label="Date" value={formatDate(date)} panelWidth={340}>
                   {(close) => (
                     <>
-                      <p className="picker-group">Next two weeks</p>
+                      <p className="picker-group">{date === UPCOMING_DAYS[0] ? 'Today' : 'Choose a day'}</p>
                       <div className="chip-grid cols-4">
-                        {UPCOMING_DAYS.map((d, i) => (
-                          <button
-                            key={d}
-                            type="button"
-                            className={`chip chip-date${d === date ? ' active' : ''}`}
-                            onClick={() => { setDate(d); close(); }}
-                          >
-                            <small>{i === 0 ? 'Today' : i === 1 ? 'Tomorrow' : new Date(`${d}T00:00:00`).toLocaleDateString(undefined, { weekday: 'short' })}</small>
-                            <strong>{new Date(`${d}T00:00:00`).toLocaleDateString(undefined, { day: 'numeric', month: 'short' })}</strong>
-                          </button>
-                        ))}
+                        {UPCOMING_DAYS.map((d) => {
+                          const isToday = d === TODAY;
+                          const isTomorrow = d === localDate(new Date(Date.now() + 86400000));
+                          return (
+                            <button
+                              key={d}
+                              type="button"
+                              className={`chip chip-date${d === date ? ' active' : ''}`}
+                              onClick={() => { setDate(d); close(); }}
+                            >
+                              <small>{isToday ? 'Today' : isTomorrow ? 'Tomorrow' : new Date(`${d}T00:00:00`).toLocaleDateString(undefined, { weekday: 'short' })}</small>
+                              <strong>{new Date(`${d}T00:00:00`).toLocaleDateString(undefined, { day: 'numeric', month: 'short' })}</strong>
+                            </button>
+                          );
+                        })}
                       </div>
                       <label className="picker-other">
                         <span>Another date</span>
-                        <input type="date" min={TODAY} value={date} onChange={(e) => { if (e.target.value) { setDate(e.target.value); close(); } }} />
+                        <input
+                          type="date"
+                          min={TODAY}
+                          max={UPCOMING_DAYS[UPCOMING_DAYS.length - 1]}
+                          value={date}
+                          onChange={(e) => { if (e.target.value) { setDate(e.target.value); close(); } }}
+                        />
                       </label>
                     </>
                   )}
@@ -274,7 +346,11 @@ export default function BookTable() {
                           </button>
                         ))}
                       </div>
-                      <p className="picker-note">Largest table seats {maxSeats}.</p>
+                      <p className="picker-note">
+                        {settings?.maxGuests > 0 && settings.maxGuests < maxSeats
+                          ? `Online bookings up to ${guestCap} guests.`
+                          : `Largest table seats ${maxSeats}.`}
+                      </p>
                     </>
                   )}
                 </PickerDropdown>
@@ -295,10 +371,10 @@ export default function BookTable() {
                 <>
                   <FloorPlan tables={tables} selectedId={tableId} onSelect={(t) => setTableId(t._id)} getState={tableState} />
                   <div className="floorplan-legend">
-                    <span><i style={{ background: 'linear-gradient(150deg, #efd5ab, #ddb27a)', border: '1px solid #c49561' }} /> Available</span>
-                    <span><i style={{ background: 'linear-gradient(150deg, #efd5ab, #ddb27a)', boxShadow: '0 0 0 2px var(--orange)' }} /> Your table</span>
+                    <span><i style={{ background: 'linear-gradient(150deg, #f5dfb8, #e3bb83)', border: '1px solid #caa06a' }} /> Available</span>
+                    <span><i style={{ background: 'linear-gradient(150deg, #f5dfb8, #e3bb83)', boxShadow: '0 0 0 2px var(--orange)' }} /> Your table</span>
                     <span><i style={{ background: '#d4d0c8' }} /> Booked / too small</span>
-                    <span><i style={{ background: 'var(--olive)' }} /> Chair</span>
+                    <span><i style={{ background: '#7c9468' }} /> Chair</span>
                   </div>
                 </>
               )}

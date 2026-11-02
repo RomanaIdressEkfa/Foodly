@@ -1,9 +1,11 @@
 import { Link } from 'react-router-dom';
 import { useCart } from '../context/CartContext.jsx';
+import { useToast } from '../context/ToastContext.jsx';
 import { categoryStyle } from '../lib/categoryMeta.jsx';
 
 export default function ProductCard({ product, featured = false, index = 0 }) {
   const { addItem } = useCart();
+  const { showToast } = useToast();
   const { bg } = categoryStyle(index);
 
   return (
@@ -26,7 +28,7 @@ export default function ProductCard({ product, featured = false, index = 0 }) {
         <button
           type="button"
           className="plus-btn"
-          onClick={() => addItem(product, 1)}
+          onClick={() => { addItem(product, 1); showToast(`${product.name} added to cart`); }}
           aria-label={`Add ${product.name} to cart`}
         >
           +

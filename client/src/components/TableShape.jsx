@@ -32,13 +32,23 @@ function longSeats(capacity) {
 
 function shapeSize(table) {
   if (table.shape === 'round') {
-    const d = Math.min(58 + table.capacity * 6, 100);
+    // 2→68, 4→80, 6→92, 8→104, 10→116, 12→128 — stays clear of the 154px
+    // grid pitch (CELL+GAP) once chairs are added around the edge.
+    const d = Math.min(56 + table.capacity * 6, 128);
     return { width: d, height: d };
   }
   if (rowSpan(table) === 2) {
-    return { width: 82, height: CELL * 2 + GAP - 62 };
+    // Both dimensions scale with capacity (6 seats → shortest/narrowest,
+    // 12+ → fills the full 2-row span) so the size difference is obvious,
+    // not just a few px of width against a height that never changes.
+    const maxH = CELL * 2 + GAP - 62;
+    const t = Math.min(1, Math.max(0, (table.capacity - 6) / 6));
+    const height = Math.round(maxH * 0.6 + maxH * 0.4 * t);
+    const width = Math.round(64 + t * 50);
+    return { width, height };
   }
-  const s = table.capacity <= 2 ? 68 : 84;
+  // 1-2 seats → small, 3-5 seats → a step up.
+  const s = table.capacity <= 2 ? 66 : 88;
   return { width: s, height: s };
 }
 
@@ -47,9 +57,9 @@ function shapeSize(table) {
 function Chair() {
   return (
     <svg viewBox="0 0 26 24" aria-hidden="true">
-      <rect className="chair-back" x="2" y="1" width="22" height="6" rx="3" />
-      <rect className="chair-seat" x="4" y="6" width="18" height="16" rx="5" />
-      <rect className="chair-shine" x="7" y="9" width="12" height="3" rx="1.5" />
+      <rect className="chair-back" x="2" y="0.5" width="22" height="7.5" rx="3.5" />
+      <rect className="chair-seat" x="3" y="6.5" width="20" height="17" rx="6.5" />
+      <rect className="chair-shine" x="7" y="10" width="12" height="3" rx="1.5" />
     </svg>
   );
 }
@@ -62,7 +72,7 @@ export default function TableShape({ table, active = false, disabled = false, no
 
   let chairs;
   if (round) {
-    const radius = size.width / 2 + 13;
+    const radius = size.width / 2 + 5;
     chairs = Array.from({ length: table.capacity }, (_, i) => {
       const deg = (360 / table.capacity) * i;
       return (
